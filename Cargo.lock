@@ -708,6 +708,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "r3e-source-list-demo"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types",
+ "reqwest",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -955,16 +965,6 @@ dependencies = [
  "redox_syscall",
  "rustix",
  "windows-sys 0.45.0",
-]
-
-[[package]]
-name = "test-space"
-version = "0.1.0"
-dependencies = [
- "ethereum-types",
- "reqwest",
- "serde",
- "toml",
 ]
 
 [[package]]

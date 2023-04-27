@@ -2,12 +2,12 @@
 name = "cryptocompare"
 url= "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
 params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-base = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-quote = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
+quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
 
 [[sources]]
 name = "cryptocompare"
 url= "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
 params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-base = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-quote = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
+quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]

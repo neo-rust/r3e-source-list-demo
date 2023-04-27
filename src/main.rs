@@ -53,18 +53,18 @@ pub struct ExchangeSourceAdapter {
     pub name: String,
     pub url: String,
     pub params: Vec<String>,
-    pub base: Vec<String>,
-    pub quote: Vec<String>,
+    pub bases: Vec<String>,
+    pub quotes: Vec<String>,
 }
 
 impl ExchangeSourceAdapter {
-    pub fn new(name: String, url: String, params: Vec<String>, base: Vec<String>, quote: Vec<String>) -> Self {
+    pub fn new(name: String, url: String, params: Vec<String>, bases: Vec<String>, quotes: Vec<String>) -> Self {
         ExchangeSourceAdapter {
             name,
             url,
             params,
-            base,
-            quote,
+            bases,
+            quotes,
         }
     }
 }
@@ -113,6 +113,9 @@ impl OracleSource for CustomSourceAdapter {
         Ok(ethereum_types::U256::from(rpc_result as u64))
     }
 }
+
+
+// TOML loader
 #[derive(Debug, Deserialize)]
 struct SourceList {
     sources: Vec<SourceConfig>,
@@ -123,8 +126,8 @@ struct SourceConfig {
     name: String,
     url: String,
     params: Vec<String>,
-    base: Vec<String>,
-    quote: Vec<String>,
+    bases: Vec<String>,
+    quotes: Vec<String>,
 }
 
 impl SourceList {
@@ -249,14 +252,14 @@ mod tests {
             name = "cryptocompare"
             url = "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
             params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-            base = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-            quote = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+            bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
+            quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
             [[sources]]
             name = "cryptocompare"
             url = "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
             params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-            base = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-            quote = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+            bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
+            quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
         "#.to_string(),
         );
 
@@ -265,11 +268,11 @@ mod tests {
                 source.name.clone(),
                 source.url.clone(),
                 source.params.clone(),
-                source.base.clone(),
-                source.quote.clone(),
+                source.bases.clone(),
+                source.quotes.clone(),
             );
-            assert_eq!(adapter.base.len(), 7);
-            assert_eq!(adapter.quote.len(), 10);
+            assert_eq!(adapter.bases.len(), 7);
+            assert_eq!(adapter.quotes.len(), 10);
         }
         assert_eq!(list.sources.len(), 2);
     }
