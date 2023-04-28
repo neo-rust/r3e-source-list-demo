@@ -105,16 +105,14 @@ impl OracleSource for ExchangeSourceAdapter {
 
 #[derive(Debug)]
 pub struct CustomSourceAdapter {
-    pub name: String,
     pub url: String,
     pub jsonpath: String,
     pub decimal: u32,
 }
 
 impl CustomSourceAdapter {
-    pub fn new(name: String, url: String, jsonpath: String, decimal: u32) -> Self {
+    pub fn new(url: String, jsonpath: String, decimal: u32) -> Self {
         CustomSourceAdapter {
-            name,
             url,
             jsonpath,
             decimal,
@@ -217,13 +215,12 @@ mod tests {
     #[test]
     fn test_custom_adapter_new() {
         let adapter = CustomSourceAdapter::new(
-            "cryptocompare".to_string(),
             "https://min-api.cryptocompare.com/data/price?api_key=d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab&fsym=BTC&tsyms=ETH".to_string(),
             "$..*".to_string(),
             8,
         );
 
-        assert_eq!(adapter.name, "cryptocompare");
+        assert_eq!(adapter.decimal, 8);
     }
 
     #[test]
@@ -269,7 +266,6 @@ mod tests {
     #[test]
     fn test_custom_adapter_fetch() {
         let adapter = CustomSourceAdapter::new(
-            "cryptocompare".to_string(),
             "https://min-api.cryptocompare.com/data/price?api_key=d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab&fsym=BTC&tsyms=ETH".to_string(),
             "$..*".to_string(),
             8,
