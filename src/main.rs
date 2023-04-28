@@ -1,8 +1,10 @@
 use ethereum_types::{U256};
 use serde::Deserialize;
+use serde_json::{Value};
+use jsonpath_rust::{JsonPathQuery};
 
 trait OracleSource {
-    fn fetch(&self, params: Vec<u8>, callBackKey: String) -> Result<U256, reqwest::Error>;
+    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error>;
 }
 
 #[derive(Debug)]
@@ -19,7 +21,7 @@ impl TimeSourceAdapter {
 }
 
 impl OracleSource for TimeSourceAdapter {
-    fn fetch(&self, params: Vec<u8>, callBackKey: String) -> Result<U256, reqwest::Error> {
+    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
         let time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -42,7 +44,7 @@ impl RngSourceAdapter {
 }
 
 impl OracleSource for RngSourceAdapter {
-    fn fetch(&self, params: Vec<u8>, callBackKey: String) -> Result<U256, reqwest::Error> {
+    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
         //Ok(U256::from(new_stdrng().unwrap().gen::<u64>()))
         Ok(U256::from(1))
     }
@@ -53,16 +55,28 @@ pub struct ExchangeSourceAdapter {
     pub name: String,
     pub url: String,
     pub params: Vec<String>,
+    pub jsonpath: String,
+    pub decimal: u32,
     pub bases: Vec<String>,
     pub quotes: Vec<String>,
 }
 
 impl ExchangeSourceAdapter {
-    pub fn new(name: String, url: String, params: Vec<String>, bases: Vec<String>, quotes: Vec<String>) -> Self {
+    pub fn new(
+        name: String,
+        url: String,
+        params: Vec<String>,
+        jsonpath: String,
+        decimal: u32,
+        bases: Vec<String>,
+        quotes: Vec<String>
+    ) -> Self {
         ExchangeSourceAdapter {
             name,
             url,
             params,
+            jsonpath,
+            decimal,
             bases,
             quotes,
         }
@@ -70,19 +84,22 @@ impl ExchangeSourceAdapter {
 }
 
 impl OracleSource for ExchangeSourceAdapter {
-    fn fetch(&self, params: Vec<u8>, callBackKey: String) -> Result<U256, reqwest::Error> {
+    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
         let url = self.url.clone();
         for param in &self.params {
             let url = url.replacen("{}", &param, 1);
         }
         // let rpc_result = request_data(&url)
         //     .unwrap()
-        //     .get(callBackKey)
+        //     .get(call_back_path)
         //     .unwrap()
         //     .as_f64()
         //     .unwrap();
-        let rpc_result = 1;
-        Ok(ethereum_types::U256::from(rpc_result as u64))
+        let rpc_result: Value = serde_json::from_str(r#"{ "ETH": 0.1 }"#).unwrap();
+        let data = rpc_result.path(&self.jsonpath).unwrap()[0].as_f64().unwrap();
+        let price = data * 10_f64.powf(self.decimal.into());
+        
+        Ok(ethereum_types::U256::from(price as u64))
     }
 }
 
@@ -90,27 +107,34 @@ impl OracleSource for ExchangeSourceAdapter {
 pub struct CustomSourceAdapter {
     pub name: String,
     pub url: String,
+    pub jsonpath: String,
+    pub decimal: u32,
 }
 
 impl CustomSourceAdapter {
-    pub fn new(name: String, url: String) -> Self {
+    pub fn new(name: String, url: String, jsonpath: String, decimal: u32) -> Self {
         CustomSourceAdapter {
             name,
             url,
+            jsonpath,
+            decimal,
         }
     }
 }
 
 impl OracleSource for CustomSourceAdapter {
-    fn fetch(&self, params: Vec<u8>, callBackKey: String) -> Result<U256, reqwest::Error> {
+    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
         // let rpc_result = request_data(&self.url)
         //     .unwrap()
-        //     .get(callBackKey)
+        //     .get(call_back_path)
         //     .unwrap()
         //     .as_f64()
         //     .unwrap();
-        let rpc_result = 1;
-        Ok(ethereum_types::U256::from(rpc_result as u64))
+        let rpc_result: Value = serde_json::from_str(r#"{ "ETH": 0.1 }"#).unwrap();
+        let data = rpc_result.path(&self.jsonpath).unwrap()[0].as_f64().unwrap();
+        let price = data * 10_f64.powf(self.decimal.into());
+        
+        Ok(ethereum_types::U256::from(price as u64))
     }
 }
 
@@ -126,6 +150,8 @@ struct SourceConfig {
     name: String,
     url: String,
     params: Vec<String>,
+    jsonpath: String,
+    decimal: u32,
     bases: Vec<String>,
     quotes: Vec<String>,
 }
@@ -168,6 +194,8 @@ mod tests {
             "cryptocompare".to_string(),
             "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}".to_string(),
             ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab".to_string()].to_vec(),
+            "$..*".to_string(),
+            8,
             ["BTC".to_string(), "ETH".to_string(), "USDT".to_string(), "USDC".to_string(), "BNB".to_string(), "XRP".to_string(), "BUSD".to_string()].to_vec(),
             [
                 "BTC".to_string(),
@@ -191,6 +219,8 @@ mod tests {
         let adapter = CustomSourceAdapter::new(
             "cryptocompare".to_string(),
             "https://min-api.cryptocompare.com/data/price?api_key=d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab&fsym=BTC&tsyms=ETH".to_string(),
+            "$..*".to_string(),
+            8,
         );
 
         assert_eq!(adapter.name, "cryptocompare");
@@ -199,14 +229,14 @@ mod tests {
     #[test]
     fn test_time_adapter_fetch() {
         let adapter = TimeSourceAdapter::new("time".to_string());
-        let result = adapter.fetch(vec![], "".to_string());
+        let result = adapter.fetch(vec![]);
         assert_eq!(result.is_ok(), true);
     }
 
     #[test]
     fn test_rng_adapter_fetch() {
         let adapter = RngSourceAdapter::new("rng".to_string());
-        let result = adapter.fetch(vec![], "".to_string());
+        let result = adapter.fetch(vec![]);
         assert_eq!(result.is_ok(), true);
     }
 
@@ -216,6 +246,8 @@ mod tests {
             "cryptocompare".to_string(),
             "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}".to_string(),
             ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab".to_string()].to_vec(),
+            "$..*".to_string(),
+            8,
             ["BTC".to_string(), "ETH".to_string(), "USDT".to_string(), "USDC".to_string(), "BNB".to_string(), "XRP".to_string(), "BUSD".to_string()].to_vec(),
             [
                 "BTC".to_string(),
@@ -230,8 +262,8 @@ mod tests {
                 "MATIC".to_string(),
             ].to_vec()
         );
-        let result = adapter.fetch([1, 2].to_vec(), "ETH".to_string());
-        assert_eq!(result.is_ok(), true);
+        let result = adapter.fetch([1, 2].to_vec());
+        assert_eq!(result.unwrap(), ethereum_types::U256::from(10000000 as u64));
     }
 
     #[test]
@@ -239,9 +271,11 @@ mod tests {
         let adapter = CustomSourceAdapter::new(
             "cryptocompare".to_string(),
             "https://min-api.cryptocompare.com/data/price?api_key=d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab&fsym=BTC&tsyms=ETH".to_string(),
+            "$..*".to_string(),
+            8,
         );
-        let result = adapter.fetch(vec![], "ETH".to_string());
-        assert_eq!(result.is_ok(), true);
+        let result = adapter.fetch(vec![]);
+        assert_eq!(result.unwrap(), ethereum_types::U256::from(10000000 as u64));
     }
 
     #[test]
@@ -252,12 +286,16 @@ mod tests {
             name = "cryptocompare"
             url = "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
             params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
+            jsonpath = "$..*"
+            decimal = 8
             bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
             quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
             [[sources]]
             name = "cryptocompare"
             url = "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
             params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
+            jsonpath = "$..*"
+            decimal = 8
             bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
             quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
         "#.to_string(),
@@ -268,6 +306,8 @@ mod tests {
                 source.name.clone(),
                 source.url.clone(),
                 source.params.clone(),
+                source.jsonpath.clone(),
+                source.decimal,
                 source.bases.clone(),
                 source.quotes.clone(),
             );
