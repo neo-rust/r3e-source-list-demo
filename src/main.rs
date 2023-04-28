@@ -21,7 +21,7 @@ impl TimeSourceAdapter {
 }
 
 impl OracleSource for TimeSourceAdapter {
-    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
+    fn fetch(&self, _params: Vec<u8>) -> Result<U256, reqwest::Error> {
         let time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -44,7 +44,7 @@ impl RngSourceAdapter {
 }
 
 impl OracleSource for RngSourceAdapter {
-    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
+    fn fetch(&self, _params: Vec<u8>) -> Result<U256, reqwest::Error> {
         //Ok(U256::from(new_stdrng().unwrap().gen::<u64>()))
         Ok(U256::from(1))
     }
@@ -85,21 +85,28 @@ impl ExchangeSourceAdapter {
 
 impl OracleSource for ExchangeSourceAdapter {
     fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
-        let url = self.url.clone();
+        let mut url = self.url.clone();
         for param in &self.params {
-            let url = url.replacen("{}", &param, 1);
+            url = url.replacen("{}", &param, 1);
         }
-        // let rpc_result = request_data(&url)
-        //     .unwrap()
-        //     .get(call_back_path)
-        //     .unwrap()
-        //     .as_f64()
-        //     .unwrap();
-        let rpc_result: Value = serde_json::from_str(r#"{ "ETH": 0.1 }"#).unwrap();
-        let data = rpc_result.path(&self.jsonpath).unwrap()[0].as_f64().unwrap();
-        let price = data * 10_f64.powf(self.decimal.into());
-        
-        Ok(ethereum_types::U256::from(price as u64))
+        url = url.replacen("{}", &self.quotes[params[0] as usize], 1);
+        url = url.replacen("{}", &self.bases[params[1] as usize], 1);
+
+        let resp = reqwest::blocking::get(&url)?.text();
+        if resp.is_err() {
+            return Err(resp.err().unwrap());
+        }
+
+        let rpc_result: Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        let data = &rpc_result.path(&self.jsonpath).unwrap()[0];
+        if data.is_string() {
+            let price = data.as_str().unwrap().parse::<f64>().unwrap() * 10_f64.powf(self.decimal.into());
+            return Ok(ethereum_types::U256::from(price as u64));
+        }
+        else {
+            let price = data.as_f64().unwrap() * 10_f64.powf(self.decimal.into());
+            return Ok(ethereum_types::U256::from(price as u64));
+        }
     }
 }
 
@@ -121,18 +128,22 @@ impl CustomSourceAdapter {
 }
 
 impl OracleSource for CustomSourceAdapter {
-    fn fetch(&self, params: Vec<u8>) -> Result<U256, reqwest::Error> {
-        // let rpc_result = request_data(&self.url)
-        //     .unwrap()
-        //     .get(call_back_path)
-        //     .unwrap()
-        //     .as_f64()
-        //     .unwrap();
-        let rpc_result: Value = serde_json::from_str(r#"{ "ETH": 0.1 }"#).unwrap();
-        let data = rpc_result.path(&self.jsonpath).unwrap()[0].as_f64().unwrap();
-        let price = data * 10_f64.powf(self.decimal.into());
-        
-        Ok(ethereum_types::U256::from(price as u64))
+    fn fetch(&self, _params: Vec<u8>) -> Result<U256, reqwest::Error> {
+        let resp = reqwest::blocking::get(&self.url)?.text();
+        if resp.is_err() {
+            return Err(resp.err().unwrap());
+        }
+
+        let rpc_result: Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        let data = &rpc_result.path(&self.jsonpath).unwrap()[0];
+        if data.is_string() {
+            let price = data.as_str().unwrap().parse::<f64>().unwrap() * 10_f64.powf(self.decimal.into());
+            return Ok(ethereum_types::U256::from(price as u64));
+        }
+        else {
+            let price = data.as_f64().unwrap() * 10_f64.powf(self.decimal.into());
+            return Ok(ethereum_types::U256::from(price as u64));
+        }
     }
 }
 
@@ -193,7 +204,7 @@ mod tests {
             "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}".to_string(),
             ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab".to_string()].to_vec(),
             "$..*".to_string(),
-            8,
+            12,
             ["BTC".to_string(), "ETH".to_string(), "USDT".to_string(), "USDC".to_string(), "BNB".to_string(), "XRP".to_string(), "BUSD".to_string()].to_vec(),
             [
                 "BTC".to_string(),
@@ -217,10 +228,10 @@ mod tests {
         let adapter = CustomSourceAdapter::new(
             "https://min-api.cryptocompare.com/data/price?api_key=d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab&fsym=BTC&tsyms=ETH".to_string(),
             "$..*".to_string(),
-            8,
+            12,
         );
 
-        assert_eq!(adapter.decimal, 8);
+        assert_eq!(adapter.decimal, 12);
     }
 
     #[test]
@@ -244,7 +255,7 @@ mod tests {
             "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}".to_string(),
             ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab".to_string()].to_vec(),
             "$..*".to_string(),
-            8,
+            12,
             ["BTC".to_string(), "ETH".to_string(), "USDT".to_string(), "USDC".to_string(), "BNB".to_string(), "XRP".to_string(), "BUSD".to_string()].to_vec(),
             [
                 "BTC".to_string(),
@@ -260,7 +271,7 @@ mod tests {
             ].to_vec()
         );
         let result = adapter.fetch([1, 2].to_vec());
-        assert_eq!(result.unwrap(), ethereum_types::U256::from(10000000 as u64));
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
@@ -268,10 +279,10 @@ mod tests {
         let adapter = CustomSourceAdapter::new(
             "https://min-api.cryptocompare.com/data/price?api_key=d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab&fsym=BTC&tsyms=ETH".to_string(),
             "$..*".to_string(),
-            8,
+            12,
         );
         let result = adapter.fetch(vec![]);
-        assert_eq!(result.unwrap(), ethereum_types::U256::from(10000000 as u64));
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
@@ -280,21 +291,31 @@ mod tests {
             r#"
             [[sources]]
             name = "cryptocompare"
-            url = "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
+            url= "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
             params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
             jsonpath = "$..*"
-            decimal = 8
+            decimal = 12
             bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
             quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+
             [[sources]]
-            name = "cryptocompare"
-            url = "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
-            params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-            jsonpath = "$..*"
-            decimal = 8
-            bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-            quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
-        "#.to_string(),
+            name = "binance"
+            url= "https://fapi.binance.com/fapi/v1/ticker/price?symbol={}{}"
+            params = []
+            jsonpath = "$.price"
+            decimal = 12
+            bases = ["USDT"]
+            quotes = ["BTC"]
+
+            [[sources]]
+            name = "kucoin"
+            url= "https://openapi-sandbox.kucoin.com/api/v1/mark-price/{}-{}/current"
+            params = []
+            jsonpath = "$.data.value"
+            decimal = 12
+            bases = ["BTC"]
+            quotes = ["USDT"]
+            "#.to_string(),
         );
 
         for source in &list.sources {
@@ -307,9 +328,9 @@ mod tests {
                 source.bases.clone(),
                 source.quotes.clone(),
             );
-            assert_eq!(adapter.bases.len(), 7);
-            assert_eq!(adapter.quotes.len(), 10);
+            let result = adapter.fetch([0, 0].to_vec());
+            assert_eq!(result.is_ok(), true);
         }
-        assert_eq!(list.sources.len(), 2);
+        assert_eq!(list.sources.len(), 3);
     }
 }

@@ -3,15 +3,24 @@ name = "cryptocompare"
 url= "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
 params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
 jsonpath = "$..*"
-decimal = 8
+decimal = 12
 bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
 quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
 
 [[sources]]
-name = "cryptocompare"
-url= "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
-params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-jsonpath = "$..*"
-decimal = 8
-bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+name = "binance"
+url= "https://fapi.binance.com/fapi/v1/ticker/price?symbol={}{}"
+params = []
+jsonpath = "$.price"
+decimal = 12
+bases = ["USDT"]
+quotes = ["BTC"]
+
+[[sources]]
+name = "kucoin"
+url= "https://openapi-sandbox.kucoin.com/api/v1/mark-price/{}-{}/current"
+params = []
+jsonpath = "$.data.value"
+decimal = 12
+bases = ["BTC"]
+quotes = ["USDT"]
