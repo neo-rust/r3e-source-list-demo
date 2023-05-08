@@ -315,7 +315,7 @@ mod tests {
 
             [[sources]]
             name = "binance"
-            url= "https://api.binance.com/api/v3/ticker/price?symbol={}{}"
+            url= "https://data.binance.com/api/v3/ticker/price?symbol={}{}"
             params = []
             jsonpath = "$.price"
             decimal = 12
