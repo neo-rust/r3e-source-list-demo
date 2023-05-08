@@ -9,7 +9,7 @@ quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MA
 
 [[sources]]
 name = "binance"
-url= "https://api.binance.com/api/v3/ticker/price?symbol={}{}"
+url= "https://data.binance.com/api/v3/ticker/price?symbol={}{}"
 params = []
 jsonpath = "$.price"
 decimal = 12
