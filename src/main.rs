@@ -315,7 +315,25 @@ mod tests {
 
             [[sources]]
             name = "binance"
-            url= "https://fapi.binance.com/fapi/v1/ticker/price?symbol={}{}"
+            url= "https://api.binance.com/api/v3/ticker/price?symbol={}{}"
+            params = []
+            jsonpath = "$.price"
+            decimal = 12
+            bases = ["USDT"]
+            quotes = ["BTC"]
+
+            [[sources]]
+            name = "mexc"
+            url= "https://api.mexc.com/api/v3/avgPrice?symbol={}{}"
+            params = []
+            jsonpath = "$.price"
+            decimal = 12
+            bases = ["USDT"]
+            quotes = ["BTC"]
+
+            [[sources]]
+            name = "hitbtc"
+            url= "https://api.hitbtc.com/api/3/public/price/ticker/{}{}"
             params = []
             jsonpath = "$.price"
             decimal = 12
@@ -324,12 +342,12 @@ mod tests {
 
             [[sources]]
             name = "kucoin"
-            url= "https://openapi-sandbox.kucoin.com/api/v1/mark-price/{}-{}/current"
+            url= "https://openapi-sandbox.kucoin.com/api/v1/market/orderbook/level1?symbol={}-{}"
             params = []
-            jsonpath = "$.data.value"
+            jsonpath = "$.data.price"
             decimal = 12
-            bases = ["BTC"]
-            quotes = ["USDT"]
+            bases = ["USDT"]
+            quotes = ["BTC"]
             "#
             .to_string(),
         );
@@ -347,6 +365,6 @@ mod tests {
             let result = adapter.fetch([0, 0].to_vec());
             assert_eq!(result.is_ok(), true);
         }
-        assert_eq!(list.sources.len(), 3);
+        assert_eq!(list.sources.len(), 5);
     }
 }
