@@ -49,7 +49,7 @@ impl OracleSource for RngSourceAdapter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct ExchangeSourceAdapter {
     pub name: String,
     pub url: String,
@@ -138,35 +138,6 @@ impl OracleSource for CustomSourceAdapter {
             let price = data.as_f64().unwrap() * 10_f64.powf(self.decimal.into());
             Ok(ethereum_types::U256::from(price as u64))
         };
-    }
-}
-
-// TOML loader
-#[derive(Debug, Deserialize)]
-struct SourceList {
-    sources: Vec<SourceConfig>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SourceConfig {
-    name: String,
-    url: String,
-    params: Vec<String>,
-    jsonpath: String,
-    decimal: u32,
-    bases: Vec<String>,
-    quotes: Vec<String>,
-}
-
-impl SourceList {
-    pub fn new(sources: String) -> Self {
-        let list: SourceList = toml::from_str(&sources).unwrap();
-
-        for x in &list.sources {
-            println!("{:?}", x.url);
-        }
-
-        list
     }
 }
 
@@ -302,51 +273,64 @@ mod tests {
 
     #[test]
     fn test_load_list() {
-        let list = SourceList::new(
+        let adapters: Vec<ExchangeSourceAdapter> = {
+            let source_list = 
             r#"
-            [[sources]]
-            name = "cryptocompare"
-            url= "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}"
-            params = ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"]
-            jsonpath = "$..*"
-            decimal = 12
-            bases = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD"]
-            quotes = ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
-
-            [[sources]]
-            name = "binance"
-            url= "https://fapi.binance.com/fapi/v1/ticker/price?symbol={}{}"
-            params = []
-            jsonpath = "$.price"
-            decimal = 12
-            bases = ["USDT"]
-            quotes = ["BTC"]
-
-            [[sources]]
-            name = "kucoin"
-            url= "https://openapi-sandbox.kucoin.com/api/v1/mark-price/{}-{}/current"
-            params = []
-            jsonpath = "$.data.value"
-            decimal = 12
-            bases = ["BTC"]
-            quotes = ["USDT"]
+            [
+                {
+                    "name": "cryptocompare",
+                    "url": "https://min-api.cryptocompare.com/data/price?api_key={}&fsym={}&tsyms={}",
+                    "params": ["d4cf504725efe27b71ec7d213f5db583ef56e88cfbf437a3483d6bb43e9839ab"],
+                    "jsonpath": "$..*",
+                    "decimal": 12,
+                    "bases": ["USDT", "BTC", "ETH", "USDC", "BNB", "XRP", "BUSD"],
+                    "quotes": ["BTC", "ETH", "USDT", "USDC", "BNB", "XRP", "BUSD", "DOGE", "ADA", "MATIC"]
+                },
+                {
+                    "name": "binance",
+                    "url": "https://data.binance.com/api/v3/ticker/price?symbol={}{}",
+                    "params": [],
+                    "jsonpath": "$.price",
+                    "decimal": 12,
+                    "bases": ["USDT"],
+                    "quotes": ["BTC"]
+                },
+                {
+                    "name": "mexc",
+                    "url": "https://api.mexc.com/api/v3/avgPrice?symbol={}{}",
+                    "params": [],
+                    "jsonpath": "$.price",
+                    "decimal": 12,
+                    "bases": ["USDT"],
+                    "quotes": ["BTC"]
+                },
+                {
+                    "name": "hitbtc",
+                    "url": "https://api.hitbtc.com/api/3/public/price/ticker/{}{}",
+                    "params": [],
+                    "jsonpath": "$.price",
+                    "decimal": 12,
+                    "bases": ["USDT"],
+                    "quotes": ["BTC"]
+                },
+                {
+                    "name": "kucoin",
+                    "url": "https://openapi-sandbox.kucoin.com/api/v1/market/orderbook/level1?symbol={}-{}",
+                    "params": [],
+                    "jsonpath": "$.data.price",
+                    "decimal": 12,
+                    "bases": ["USDT"],
+                    "quotes": ["BTC"]
+                }
+            ]
             "#
-            .to_string(),
-        );
-
-        for source in &list.sources {
-            let adapter = ExchangeSourceAdapter::new(
-                source.name.clone(),
-                source.url.clone(),
-                source.params.clone(),
-                source.jsonpath.clone(),
-                source.decimal,
-                source.bases.clone(),
-                source.quotes.clone(),
-            );
+            .to_string();
+            serde_json::from_str(&source_list).unwrap()
+        };
+        assert_eq!(adapters.len(), 5);
+        for adapter in adapters {
             let result = adapter.fetch([0, 0].to_vec());
             assert_eq!(result.is_ok(), true);
         }
-        assert_eq!(list.sources.len(), 3);
     }
 }
